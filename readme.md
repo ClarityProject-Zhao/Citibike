@@ -1,11 +1,11 @@
-#Summary
+# Summary
 
-##Data
+## Data
 A large sum of data is made available by Citibike open-data project. including rides history starting from 2013.
 Details such as ride's starting location, end location, trip duration, as well as basic information of the rider 
 (e.g. member/non-member), etc., are readily available.
 
-##Background
+## Background
 A couple of ideas jumped to mind when I first started looking at the data, including looking at how riding patterns 
 change since Covid lock-down. An easy way to tackle this is by analyzing the volume of rides with different grouping. 
 For example, one can look at how the number of rides on weekdays changes through time, 
@@ -16,14 +16,14 @@ would there be any clustering of rides taken place? Can we classify the rides in
 And if that is the case, from a business perspective, can business targets the riders differently 
 based on the purpose of the rides?
 
-##EDA
+## EDA
 Looking at the distribution of rides from different angles, such as by day/hour of rides, by area, by user type, 
 one can see that some of the pre-Covid patterns still hold. 
 Rides occur more often during commute hours on weekdays, with demand coming from residential 
 areas in the morning and from office areas in the afternoon. 
 Central park areas appear to be in heavier demand in the evening times.
 
-##Feature selection
+## Feature selection
 The feature I included are:
 * Location: Normalized latitude/longitude of the start & end station. While Citibike covers both NYC and Jersey City, 
 I decided to exclude Jersey City data to use location as a feature in a more meaningful way.
@@ -38,12 +38,12 @@ but can be derived by joining the station geography information with an area map
 
 * distance
 
-##Dimension reduction visualization
+## Dimension reduction visualization
 To see if there is any obvious clustering of the data, I started with visualizing the data using dimension reduction. 
 Unfortunately, there does not seem to be any clear clustering patterns when projecting my data on a 2D surface 
 using PCA, T-SNE and Umap. 
 
-##Clustering
+## Clustering
 As the clustering pattern is not evident, I decided to go with 'trial and error'. There are at least two grids 
 that matter, specifically, the number of cluster, and the clustering technique.
 For the first one, I tried clustering my data into 2/3/4 groups. Anything beyond that would be hard to interpret, 
@@ -63,16 +63,16 @@ all clusters comprise mainly of rides that start from areas where bikes are in d
 to areas where bikes are docked (net checkout<0)
 
 
-##Classification
+## Classification
 Using the labels derived from the clustering, I was also able to predict the group of the ride fairly well 
 (with 90% accuracy). The classification results show promises of a potentially useful way to look at this data-set.
    
-##Deployment
+## Deployment
 For practice, I deployed some of the key charts onto a website using flask and host it via Heroku. 
 More detail can be found on [github] (https://github.com/cczhao9151/Citibike-flask)
 Website can be found [here] (http://127.0.0.1:5001/)
 
-#Conclusion and further work
+# Conclusion and further work
 The work shows promises of decoupling Citibike rides to smaller groups for better understanding of the rides and the riders.
 More work can be done to explore/confirm the patterns, especially by testing it on other periods.
 August 2020 is a somewhat unique period as NYC was still in partial lock down and human behaviors are 
