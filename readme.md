@@ -69,8 +69,10 @@ Using the labels derived from the clustering, I was also able to predict the gro
    
 ## Deployment
 For practice, I deployed some of the key charts onto a website using flask and host it via Heroku. 
-More detail can be found on [github] (https://github.com/cczhao9151/Citibike-flask)
-Website can be found [here] (http://127.0.0.1:5001/)
+
+More detail can be found at (https://github.com/cczhao9151/Citibike-flask).
+
+Website can be found at (http://127.0.0.1:5001/)
 
 # Conclusion and further work
 The work shows promises of decoupling Citibike rides to smaller groups for better understanding of the rides and the riders.
