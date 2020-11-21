@@ -86,14 +86,14 @@ def area_concat(key, df):
     return df_area
 
 
-def summarize_rides_by_hour(df, key):
-    df_hr = df[['hour', key, 'net_checkout']].pivot_table(index=key, columns='hour',
+def summarize_rides_by_hour(df, key,col='hour'):
+    df_pivot = df[['hour', key, 'net_checkout']].pivot_table(index=key, columns=col,
                                                           values='net_checkout',
                                                           aggfunc=np.mean)
 
-    df_hr.columns = [str(int(x)) for x in df_hr.columns.tolist()]
-    df_hr.reset_index(inplace=True)
-    return df_hr
+    df_pivot.columns = [str(int(x)) for x in df_pivot.columns.tolist()]
+    df_pivot.reset_index(inplace=True)
+    return df_pivot
 
 
 def plot_dendrogram(model, **kwargs):
@@ -118,7 +118,7 @@ def plot_dendrogram(model, **kwargs):
     hierarchy.dendrogram(linkage_matrix, **kwargs)
 
 
-def main(run_eda):
+def main():
     use_trim = True
     update_data = True
 
@@ -541,9 +541,10 @@ def main(run_eda):
                     labels = labels_dict[type][cluster_num]
                     df_customer_cluster = {}
 
-                    fig, ax = plt.subplots(4, cluster_num)
-                    fig.set_size_inches(8*cluster_num, 15)
-                    plt.tight_layout(pad=8)
+                    gs_kw = dict(height_ratios=[1.5,4,4,2,2,1.5])
+                    fig, ax = plt.subplots(6, cluster_num,constrained_layout=True,gridspec_kw=gs_kw,figsize=(8*cluster_num, 30))
+
+                    #plt.tight_layout(pad=8)
                     for cluster_i in range(0, cluster_num):
                         print(f'analyze cluster {cluster_i} of {labels_str_dict[type]}')
                         mask_i = np.argwhere(labels == cluster_i).ravel()
@@ -553,36 +554,82 @@ def main(run_eda):
                         df_customer_cluster[cluster_i]['end area']=df_customer_cluster[cluster_i]['end area'].apply(lambda x:x.split('-')[0])
 
                         #bar plot starting area
-                        pd.DataFrame((df_customer_cluster[cluster_i]['start area'].value_counts())).sort_values(
-                            by='start area', ascending=False).head(20).plot(kind='barh', ax=ax[0, cluster_i])
-                        ax[0, cluster_i].title.set_text(f'Top 20 Start Area in cluster {cluster_i+1}')
-                        #bar plot end area
-                        pd.DataFrame((df_customer_cluster[cluster_i]['end area'].value_counts())).sort_values(
-                            by='end area', ascending=False).head(20).plot(kind='barh', ax=ax[1, cluster_i])
-                        ax[1, cluster_i].title.set_text(f'Top 20 End Area in cluster {cluster_i+1}')
-                        #bar plot riding time
+
+                        ###question: appearance of the rides in general: by boro
+                        df1=pd.DataFrame((df_customer_cluster[cluster_i]['start boro'].value_counts())).sort_values(
+                            by='start boro', ascending=False)
+
+                        df2=pd.DataFrame((df_customer_cluster[cluster_i]['end boro'].value_counts())).sort_values(
+                            by='end boro', ascending=False)
+
+                        df_boro=pd.merge(df1,df2,how='outer',left_index=True,right_index=True)
+                        df_boro.plot(kind='bar',ax=ax[0, cluster_i])
+                        ax[0, cluster_i].title.set_text(f'Rides occurrence by borough in cluster {cluster_i+1}')
+
+                        ##appearance of the rides by area
+                        df_weekday=df_customer_cluster[cluster_i][df_customer_cluster[cluster_i]['start_weekday'].isin([1,2,3,4,5])]
+                        df1=pd.DataFrame((df_weekday['start area'].value_counts())).sort_values(
+                            by='start area', ascending=False)
+                        df2=pd.DataFrame((df_weekday['end area'].value_counts())).sort_values(
+                            by='end area', ascending=False)
+                        df_area=pd.merge(df1,df2,how='outer',left_index=True,right_index=True)
+                        df_area['start area'].fillna(0,inplace=True)
+                        df_area['end area'].fillna(0,inplace=True)
+                        df_area.sort_values('start area',ascending=True,inplace=True)
+
+                        df_area.plot(kind='barh',ax=ax[1, cluster_i])
+                        ax[1, cluster_i].tick_params(labelsize=8)
+                        ax[1, cluster_i].title.set_text(f'Rides occurrence by area (weekday) in cluster {cluster_i+1}')
+
+                        #weekend
+                        df_weekend=df_customer_cluster[cluster_i][df_customer_cluster[cluster_i]['start_weekday'].isin([6,7])]
+                        df1=pd.DataFrame((df_weekend['start area'].value_counts())).sort_values(
+                            by='start area', ascending=False)
+                        df2=pd.DataFrame((df_weekend['end area'].value_counts())).sort_values(
+                            by='end area', ascending=False)
+                        df_area=pd.merge(df1,df2,how='outer',left_index=True,right_index=True)
+                        df_area['start area'].fillna(0,inplace=True)
+                        df_area['end area'].fillna(0,inplace=True)
+                        df_area.sort_values('start area',ascending=True,inplace=True)
+                        df_area.plot(kind='barh',ax=ax[2, cluster_i])
+                        ax[2, cluster_i].tick_params(labelsize=8)
+                        ax[2, cluster_i].title.set_text(f'Rides occurrence by area (weekend) in cluster {cluster_i+1}')
+
+                        ##appearance of the rides by hour
                         df_start_time_raw=df_customer_cluster[cluster_i][['start_weekday', 'start_hr']].groupby(
                             ['start_weekday', 'start_hr']).size()
                         df_start_time=df_start_time_raw.reset_index()
                         df_start_time.columns=['ride_day','ride_hr','count']
-                        sns.histplot(df_start_time, x="ride_hr",binwidth=1, y='count',hue='ride_day',ax=ax[2, cluster_i])
-                        ax[2, cluster_i].title.set_text(f'Day/Time of the rides in cluster {cluster_i+1}')
+                        #weekay rides
+                        df_start_time_weekday = df_start_time.loc[df_start_time['ride_day'].isin([1,2,3,4,5])]
+                        sns.barplot(data=df_start_time_weekday, x="ride_hr", y='count', hue='ride_day', palette='husl',ax=ax[3, cluster_i])
+                        ax[3, cluster_i].title.set_text(f'Rides occurrence by hour (weekday) in cluster {cluster_i+1}')
+                        #weekend rides
+                        df_start_time_weekend=df_start_time.loc[df_start_time['ride_day'].isin([6,7])]
+                        sns.barplot(data=df_start_time_weekend, x="ride_hr",y='count', hue='ride_day',palette='husl',ax=ax[4, cluster_i])
+                        ax[4, cluster_i].title.set_text(f'Rides occurrence by hour (weekend) in cluster {cluster_i+1}')
 
-                        #bar plot start and end area demand comparison
-                        df_val = df_customer_cluster[cluster_i][
-                            ['start_area_net_checkout', 'end_area_net_checkout']].groupby(
-                            ['start_area_net_checkout', 'end_area_net_checkout']).size()
-                        df_checkout = df_customer_cluster[cluster_i][
-                            ['start_area_net_checkout', 'end_area_net_checkout']].copy()
-                        df_checkout.dropna(inplace=True)
-                        df_checkout['val'] = df_checkout.apply(lambda x: df_val[x.iloc[0]][x.iloc[1]], axis=1)
-                        df_checkout.plot.scatter(
-                            x='start_area_net_checkout', y='end_area_net_checkout', s='val', ax=ax[3, cluster_i])
-                        ax[3, cluster_i].title.set_text(f'Net Checkouts Comparison of Start & End Area in {cluster_i+1}')
+                        df_customer_cluster[cluster_i].usertype.value_counts().plot(kind='bar',ax= ax[5,cluster_i])
+                        ax[5, cluster_i].title.set_text(f'Rides occurrence by usertype in cluster {cluster_i + 1}')
+                        # ax=sns.histplot(df_start_time, x="ride_hr",binwidth=1, y='count', hue='ride_day',palette="pastel",unstack)
+                        # sns.histplot(df_start_time, x="ride_hr",binwidth=1, y='count',hue='ride_day',ax=ax[2, cluster_i])
+                        # ax[2, cluster_i].title.set_text(f'Day/Time of the rides in cluster {cluster_i+1}')
+                        #
+                        # #bar plot start and end area demand comparison
+                        # df_val = df_customer_cluster[cluster_i][
+                        #     ['start_area_net_checkout', 'end_area_net_checkout']].groupby(
+                        #     ['start_area_net_checkout', 'end_area_net_checkout']).size()
+                        # df_checkout = df_customer_cluster[cluster_i][
+                        #     ['start_area_net_checkout', 'end_area_net_checkout']].copy()
+                        # df_checkout.dropna(inplace=True)
+                        # df_checkout['val'] = df_checkout.apply(lambda x: df_val[x.iloc[0]][x.iloc[1]], axis=1)
+                        # df_checkout.plot.scatter(
+                        #     x='start_area_net_checkout', y='end_area_net_checkout', s='val', ax=ax[6, cluster_i])
+                        # ax[6, cluster_i].title.set_text(f'Net Checkouts Comparison of Start & End Area in {cluster_i+1}')
 
-                        plt.setp(ax[0, cluster_i].yaxis.get_majorticklabels(), fontsize=8)
-                        plt.setp(ax[1, cluster_i].yaxis.get_majorticklabels(), fontsize=8)
-                        plt.setp(ax[2, cluster_i].yaxis.get_majorticklabels(), fontsize=8)
+                        # plt.setp(ax[0, cluster_i].yaxis.get_majorticklabels(), fontsize=8)
+                        # plt.setp(ax[1, cluster_i].yaxis.get_majorticklabels(), fontsize=8)
+                        # plt.setp(ax[2, cluster_i].yaxis.get_majorticklabels(), fontsize=8)
                     plt.savefig(
                         os.path.join(root_path, r'plots',
                                      f'202008_{labels_str_dict[type]}_{cluster_num}_cluster_feature_detail.png'))
@@ -614,38 +661,38 @@ def main(run_eda):
                         #                                               ['station id', 'geometry']]),
                         #                                           how='left', on='end station id')
 
-                        counter_start = df_customer_cluster[cluster_i]['start area'].value_counts()
-                        counter_end = df_customer_cluster[cluster_i]['end area'].value_counts()
-                        df_customer_cluster[cluster_i]['start_area_count'] = df_customer_cluster[
-                            cluster_i]['start area'].apply(lambda x: counter_start[x])
-                        df_customer_cluster[cluster_i]['end_area_count'] = df_customer_cluster[
-                            cluster_i]['end area'].apply(lambda x: counter_end[x])
+                        #df_customer_cluster[cluster_i]['weekend_flag']=df_customer_cluster[cluster_i]['start_weekday'].apply(lambda x: 1 if x>=6 else 0)
 
+                        # counter_start = df_customer_cluster[cluster_i]['start area'].value_counts()
+                        # counter_end = df_customer_cluster[cluster_i]['end area'].value_counts()
+                        # df_customer_cluster[cluster_i]['start_area_net_checkout_median'] = df_customer_cluster[
+                        #     cluster_i]['start area'].apply(lambda x: counter_start[x])
+                        # df_customer_cluster[cluster_i]['end_area_net_checkout_median'] = df_customer_cluster[
+                        #     cluster_i]['end area'].apply(lambda x: counter_end[x])
 
-                        df_start = gpd.GeoDataFrame(df_customer_cluster[cluster_i],
-                                                           geometry=gpd.points_from_xy(df_customer_cluster[cluster_i]['start station longitude'],
-                                                                                       df_customer_cluster[cluster_i]['start station latitude']),
-                                                           crs={'init': 'epsg:4326', 'no_defs': True})
-
+                        start_avg=df_customer_cluster[cluster_i][['start area','start_area_net_checkout']].groupby(['start area']).mean()
+                        start_avg_gis=gpd.GeoDataFrame(pd.merge(start_avg.reset_index(),map[['boro', 'area', 'geometry']],
+                                                                   how='inner',left_on='start area',right_on='area'),
+                                                          geometry='geometry',crs={'init': 'epsg:4326', 'no_defs': True})
                         map.plot(ax=ax[cluster_i,0],figsize=(8, 8), alpha=0.5, edgecolor='k')
-                        gplt.pointplot(df_start, hue='start_hr', scale='start_area_count',
-                                       legend=True, legend_var='hue',ax=ax[cluster_i,0])
+                        start_avg_gis.plot(column='start_area_net_checkout', ax=ax[cluster_i,0], legend=True)
 
-                        df_end = gpd.GeoDataFrame(df_customer_cluster[cluster_i],
-                                                    geometry=gpd.points_from_xy(
-                                                        df_customer_cluster[cluster_i]['end station longitude'],
-                                                        df_customer_cluster[cluster_i]['end station latitude']),
-                                                    crs={'init': 'epsg:4326', 'no_defs': True})
+
+
+                        end_avg=df_customer_cluster[cluster_i][['end area','end_area_net_checkout']].groupby(['end area']).mean()
+                        end_avg_gis=gpd.GeoDataFrame(pd.merge(end_avg.reset_index(),map[['boro', 'area', 'geometry']],
+                                                                   how='inner',left_on='end area',right_on='area'),
+                                                          geometry='geometry',crs={'init': 'epsg:4326', 'no_defs': True})
 
                         map.plot(ax=ax[cluster_i,1],figsize=(8, 8), alpha=0.5, edgecolor='k')
-                        gplt.pointplot(df_end, hue='stop_hr', scale='end_area_count',
-                                       legend=True, legend_var='hue',ax=ax[cluster_i,1])
+                        end_avg_gis.plot(column='end_area_net_checkout', ax=ax[cluster_i,1], legend=True)
+
+
                         ax[cluster_i,0].title.set_text(f'Start Station Net Checkouts in cluster {cluster_i + 1}')
                         ax[cluster_i,1].title.set_text(f'End Station Net Checkouts in cluster {cluster_i + 1}')
                     plt.savefig(os.path.join(root_path, r'plots',f'202008_{labels_str_dict[type]}_{cluster_num}_station_detail.png'))
 
                     plt.close('all')
-
 
 
     run_classification = True
@@ -665,5 +712,4 @@ def main(run_eda):
 
 
 if __name__ == '__main__':
-    run_eda = True
-    main(run_eda)
+    main()
