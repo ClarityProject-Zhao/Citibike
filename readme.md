@@ -72,7 +72,7 @@ For practice, I deployed some of the key charts onto a website using flask and h
 
 More detail can be found at (https://github.com/cczhao9151/Citibike-flask).
 
-Website can be found at (http://127.0.0.1:5001/)
+Website can be found at (http://citibike202008.herokuapp.com/)
 
 # Conclusion and further work
 The work shows promises of decoupling Citibike rides to smaller groups for better understanding of the rides and the riders.
